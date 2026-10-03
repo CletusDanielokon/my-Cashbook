@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CashBook Authentication</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+    <link href="./output.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: "#0f172a",
+                        green: "#22c55e"
+                    }
+                }
+            }
+        };
+    </script>
+
+
+    <!-- JavaScript -->
+    <script src="index.js" defer></script>
+</head>
+
+<body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+
+    <!-- Main Card -->
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden md:flex">
+
+        <!-- Image Section -->
+        <div class="hidden md:flex md:w-1/2 bg-navy relative">
+
+            <img
+                src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80"
+                alt="Managing personal finances"
+                class="absolute inset-0 w-full h-full object-cover opacity-40"
+            >
+
+            <div class="relative z-10 flex flex-col justify-center p-10 text-white">
+                <h1 class="text-4xl font-bold mb-4">
+                    Welcome to CashBook
+                </h1>
+
+                <p class="text-slate-200 leading-relaxed">
+                    Track your income, record your expenses,
+                    and manage your money with ease.
+                </p>
+            </div>
+
+        </div>
+
+
+        <!-- Form Section -->
+        <div class="w-full md:w-1/2 p-6 sm:p-8">
+
+            <!-- Brand -->
+            <div class="text-center mb-6">
+
+                <h2 class="text-3xl font-bold text-navy flex items-center justify-center gap-2">
+                    <i class="fas fa-wallet text-green"></i>
+                    CashBook
+                </h2>
+
+                <p id="subtitle" class="text-sm text-slate-500 mt-1">
+                    Manage your daily cash flow
+                </p>
+
+            </div>
+           
+
+
+            <!-- Tabs -->
+            <div class="flex bg-slate-100 rounded-lg p-1 mb-6">
+
+                <button
+                    id="login-tab"
+                    type="button"
+                    class="w-1/2 bg-white text-navy rounded-md py-2 font-semibold shadow"
+                >
+                    Login
+                </button>
+
+                <button
+                    id="signup-tab"
+                    type="button"
+                    class="w-1/2 text-slate-500 rounded-md py-2 font-semibold"
+                >
+                    Sign Up
+                </button>
+
+            </div>
+
+
+            <!-- Message -->
+            <p id="message" class="text-sm text-center mb-4"></p>
+
+
+            <!-- ================= LOGIN FORM ================= -->
+
+            <form id="login-form" class="space-y-4">
+
+                <!-- Email / Phone -->
+                <div>
+
+                    <label
+                        for="login-identifier"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Email or Phone Number
+                    </label>
+
+                    <input
+                        type="text"
+                        id="login-identifier"
+                        placeholder="Enter email or phone number"
+                        class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-green"
+                        required
+                    >
+
+                </div>
+
+                <!-- Login Password -->
+                <div>
+
+                    <label
+                        for="login-password"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Password
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            type="password"
+                            id="login-password"
+                            placeholder="Enter password"
+                            class="w-full border border-slate-300 rounded-lg p-3 pr-12 outline-none focus:border-green"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                            data-target="login-password"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+
+                    </div>
+                    <div class="text-right">
+                        <button
+                            type="button"
+                            id="forgot-password"
+                            class="text-sm text-green font-semibold hover:underline"
+                        >
+                            Forgot Password?
+                        </button>
+                    </div>
+
+                </div>
+
+
+                <!-- Login Button -->
+                <button
+                    type="submit"
+                    class="w-full bg-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
+                >
+                    Login
+                </button>
+
+                <div class="flex items-center gap-3 my-5">
+                    <div class="flex-1 h-px bg-slate-200"></div>
+
+                    <span class="text-sm text-slate-400">OR</span>
+
+                    <div class="flex-1 h-px bg-slate-200"></div>
+                </div>
+
+                <button
+                    type="button"
+                    id="google-login"
+                    class="w-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 py-3 rounded-lg font-semibold flex items-center justify-center gap-3"
+                >
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            fill="#4285F4"
+                            d="M21.35 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"
+                        />
+
+                        <path
+                            fill="#34A853"
+                            d="M12 21.75c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.75 9.75 0 0 0 12 21.75z"
+                        />
+
+                        <path
+                            fill="#FBBC05"
+                            d="M6.54 13.83A5.86 5.86 0 0 1 6.23 12c0-.64.11-1.26.31-1.83V7.64H3.29A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.36l3.25-2.53z"
+                        />
+
+                        <path
+                            fill="#EA4335"
+                            d="M12 6.14c1.43 0 2.72.49 3.73 1.45l2.79-2.79C16.84 3.17 14.63 2.25 12 2.25a9.75 9.75 0 0 0-8.71 5.39l3.25 2.53C7.31 7.86 9.46 6.14 12 6.14z"
+                        />
+                    </svg>
+
+                    Continue with Google
+                </button>
+
+            </form>
+
+
+            <!-- SIGN UP FORM -->
+
+            <form id="signup-form" class="hidden space-y-4">
+
+                <!-- Full Name -->
+                <div>
+
+                    <label
+                        for="signup-name"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Full Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="signup-name"
+                        placeholder="Enter your full name"
+                        class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-green"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- Mobile Number -->
+                <div>
+
+                    <label
+                        for="signup-mobile"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Mobile Number
+                    </label>
+
+                    <input
+                        type="tel"
+                        id="signup-mobile"
+                        placeholder="08012345678"
+                        class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-green"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- Email -->
+                <div>
+
+                    <label
+                        for="signup-email"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Email Address
+                    </label>
+
+                    <input
+                        type="email"
+                        id="signup-email"
+                        placeholder="example@gmail.com"
+                        class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-green"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- Book Name -->
+                <div>
+
+                    <label
+                        for="signup-book"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Book Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="signup-book"
+                        placeholder="My Personal CashBook"
+                        class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-green"
+                        required
+                    >
+
+                </div>
+
+
+                <!-- Password -->
+                <div>
+
+                    <label
+                        for="signup-password"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Password
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            type="password"
+                            id="signup-password"
+                            placeholder="Create password"
+                            class="w-full border border-slate-300 rounded-lg p-3 pr-12 outline-none focus:border-green"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                            data-target="signup-password"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Confirm Password -->
+                <div>
+
+                    <label
+                        for="confirm-password"
+                        class="block text-sm font-semibold mb-1"
+                    >
+                        Confirm Password
+                    </label>
+
+                    <div class="relative">
+
+                        <input
+                            type="password"
+                            id="confirm-password"
+                            placeholder="Confirm password"
+                            class="w-full border border-slate-300 rounded-lg p-3 pr-12 outline-none focus:border-green"
+                            required
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                            data-target="confirm-password"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Create Account -->
+                <button
+                    type="submit"
+                    class="w-full bg-green hover:bg-green-600 text-white py-3 rounded-lg font-semibold"
+                >
+                    Create Account
+                </button>
+
+            </form>
+
+
+            <!-- Bottom Link -->
+            <p id="footer" class="text-center text-sm text-slate-500 mt-6">
+
+                Don't have an account?
+
+                <button
+                    id="footer-link"
+                    type="button"
+                    class="text-green font-semibold"
+                >
+                    Sign up
+                </button>
+
+            </p>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
+
+
