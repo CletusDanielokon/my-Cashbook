@@ -101,6 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const confirmLogout = confirm("Are you sure you want to logout?");
         if (confirmLogout) {
             localStorage.removeItem("cashbookUser");
+            localStorage.removeItem("cashbookToken");
             window.location.href = "index.html";
         }
     });

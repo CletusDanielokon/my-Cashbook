@@ -46,11 +46,53 @@ document.addEventListener("DOMContentLoaded", () => {
     // GET TRANSACTIONS
     // =================================
 
-    let transactions =
-        JSON.parse(
-            localStorage.getItem("cashbookTransactions")
-        ) || [];
+    let transactions = [];
 
+    async function loadTransactions() {
+
+        try {
+
+            const token =
+                localStorage.getItem("cashbookToken");
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/transactions",
+                    {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${token}`
+                        }
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+
+                console.error(
+                    data.message ||
+                    "Unable to load transactions."
+                );
+
+                return;
+            }
+
+            transactions =
+                data.transactions || [];
+
+            generateReport();
+
+        } catch (error) {
+
+            console.error(
+                "Error loading report transactions:",
+                error
+            );
+
+        }
+    }
 
     // =================================
     // ELEMENTS
@@ -482,7 +524,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .addEventListener("click", () => {
 
             localStorage.removeItem("cashbookUser");
-
+            localStorage.removeItem("cashbookToken");
             window.location.href = "index.html";
 
         });
@@ -492,6 +534,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // INITIAL REPORT
     // =================================
 
-    generateReport();
+    loadTransactions();
 
 });

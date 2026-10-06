@@ -106,7 +106,10 @@ passwordButtons.forEach(function (button) {
 // SIGN UP
 // ===============================
 
-signupForm.addEventListener("submit", function (event) {
+// ===============================
+// SIGN UP
+// ===============================
+signupForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
     const fullName = document.getElementById("signup-name").value.trim();
@@ -116,74 +119,174 @@ signupForm.addEventListener("submit", function (event) {
     const password = document.getElementById("signup-password").value;
     const confirmPassword = document.getElementById("confirm-password").value;
 
+    // Check passwords
     if (password !== confirmPassword) {
         message.textContent = "Passwords do not match.";
-        message.className = "text-center text-sm mb-4 text-red-500 font-semibold";
+        message.className =
+            "text-center text-sm mb-4 text-red-500 font-semibold";
         return;
     }
 
+    // Check password length
     if (password.length < 6) {
-        message.textContent = "Password must be at least 6 characters.";
-        message.className = "text-center text-sm mb-4 text-red-500 font-semibold";
+        message.textContent =
+            "Password must be at least 6 characters.";
+        message.className =
+            "text-center text-sm mb-4 text-red-500 font-semibold";
         return;
     }
 
-    const firstName = fullName.split(" ")[0];
+    // Send registration data to backend
+    try {
+        const response = await fetch(
+            "http://localhost:5000/api/auth/register",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    fullName: fullName,
+                    mobile: mobile,
+                    email: email,
+                    book: book,
+                    password: password
+                })
+            }
+        );
 
-    const user = {
-        fullName: fullName,
-        firstName: firstName,
-        mobile: mobile,
-        email: email,
-        book: book,
-        password: password,
-        createdAt: new Date().toLocaleDateString("en-US", {
-            month: "long",
-            year: "numeric"
-        })
-    };
+        const data = await response.json();
 
-    localStorage.setItem("cashbookUser", JSON.stringify(user));
+        if (!response.ok) {
+            message.textContent =
+                data.message || "Registration failed.";
 
-    message.textContent = "Account created successfully!";
-    message.className = "text-center text-sm mb-4 text-green font-semibold";
+            message.className =
+                "text-center text-sm mb-4 text-red-500 font-semibold";
 
-    setTimeout(function () {
-        window.location.href = "welcome.html";
-    }, 1000);
+            return;
+        }
+
+        // Save JWT token so the user is logged in after registering
+        if (data.token) {
+            localStorage.setItem("cashbookToken", data.token);
+        }
+
+        // Save only safe user information in the browser
+        localStorage.setItem(
+            "cashbookUser",
+            JSON.stringify(data.user)
+        );
+
+        message.textContent =
+            "Account created successfully!";
+
+        message.className =
+            "text-center text-sm mb-4 text-green font-semibold";
+
+        setTimeout(function () {
+            window.location.href = "welcome.html";
+        }, 1000);
+
+    } catch (error) {
+        console.error("Registration error:", error);
+
+        message.textContent =
+            "Unable to connect to the server.";
+
+        message.className =
+            "text-center text-sm mb-4 text-red-500 font-semibold";
+    }
 });
 
 // ===============================
 // LOGIN
 // ===============================
-
-loginForm.addEventListener("submit", function (event) {
+loginForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    const identifier = document.getElementById("login-identifier").value.trim();
-    const password = document.getElementById("login-password").value;
+    const identifier = document
+        .getElementById("login-identifier")
+        .value
+        .trim();
 
-    const savedUser = JSON.parse(localStorage.getItem("cashbookUser"));
+    const password = document
+        .getElementById("login-password")
+        .value;
 
-    if (!savedUser) {
-        message.textContent = "No account found. Please sign up first.";
-        message.className = "text-center text-sm mb-4 text-red-500 font-semibold";
+    // Check that both fields were entered
+    if (!identifier || !password) {
+        message.textContent =
+            "Please enter your email/phone number and password.";
+
+        message.className =
+            "text-center text-sm mb-4 text-red-500 font-semibold";
+
         return;
     }
 
-    if (
-        (identifier === savedUser.email || identifier === savedUser.mobile) &&
-        password === savedUser.password
-    ) {
-        message.textContent = "Login successful!";
-        message.className = "text-center text-sm mb-4 text-green font-semibold";
+    try {
+        // Send login details to backend
+        const response = await fetch(
+            "http://localhost:5000/api/auth/login",
+            {
+                method: "POST",
 
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    identifier: identifier,
+                    password: password
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        // Login failed
+        if (!response.ok) {
+            message.textContent =
+                data.message || "Login failed.";
+
+            message.className =
+                "text-center text-sm mb-4 text-red-500 font-semibold";
+
+            return;
+        }
+
+        // Save JWT token
+        localStorage.setItem(
+            "cashbookToken",
+            data.token
+        );
+
+        // Save safe user information
+        localStorage.setItem(
+            "cashbookUser",
+            JSON.stringify(data.user)
+        );
+
+        message.textContent =
+            "Login successful!";
+
+        message.className =
+            "text-center text-sm mb-4 text-green font-semibold";
+
+        // Go to welcome page
         setTimeout(function () {
             window.location.href = "welcome.html";
         }, 1000);
-    } else {
-        message.textContent = "Invalid email, phone number or password.";
-        message.className = "text-center text-sm mb-4 text-red-500 font-semibold";
+
+    } catch (error) {
+        console.error("Login error:", error);
+
+        message.textContent =
+            "Unable to connect to the server.";
+
+        message.className =
+            "text-center text-sm mb-4 text-red-500 font-semibold";
     }
 });
 

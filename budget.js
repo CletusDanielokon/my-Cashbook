@@ -41,8 +41,47 @@ document.addEventListener("DOMContentLoaded", function () {
     const budgetMessage = document.getElementById("budget-message");
     const goalsList = document.getElementById("goals-list");
 
-    const BUDGET_KEY = "cashbookBudget";
-    const GOALS_KEY = "cashbookGoals";
+    // =========================================
+    // API SETUP (MongoDB via Express backend)
+    // =========================================
+    const API_URL = "http://localhost:5000/api";
+    const token = localStorage.getItem("cashbookToken");
+
+    if (!token) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    async function apiRequest(path, method = "GET", body = null) {
+        const response = await fetch(API_URL + path, {
+            method: method,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: body ? JSON.stringify(body) : undefined
+        });
+
+        const data = await response.json();
+
+        if (response.status === 401) {
+            localStorage.removeItem("cashbookToken");
+            localStorage.removeItem("cashbookUser");
+            window.location.href = "index.html";
+            throw new Error("Session expired. Please log in again.");
+        }
+
+        if (!response.ok) {
+            throw new Error(data.message || "Request failed.");
+        }
+
+        return data;
+    }
+
+    // Data loaded from MongoDB
+    let transactions = [];
+    let monthlyBudget = 0;
+    let goals = [];
 
     function formatNaira(amount) {
         return new Intl.NumberFormat("en-NG", {
@@ -53,11 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function getTransactions() {
-        try {
-            return JSON.parse(localStorage.getItem("cashbookTransactions")) || [];
-        } catch (error) {
-            return [];
-        }
+        return transactions;
     }
 
     function getMonthlyExpenses() {
@@ -81,7 +116,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function displayBudget() {
-        const savedBudget = Number(localStorage.getItem(BUDGET_KEY)) || 0;
+        const savedBudget = monthlyBudget;
         const spent = getMonthlyExpenses();
         const remaining = savedBudget - spent;
         let percentage = savedBudget > 0 ? (spent / savedBudget) * 100 : 0;
@@ -115,15 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function getGoals() {
-        try {
-            return JSON.parse(localStorage.getItem(GOALS_KEY)) || [];
-        } catch (error) {
-            return [];
-        }
-    }
-
-    function saveGoals(goals) {
-        localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+        return goals;
     }
 
     function displayGoals() {
@@ -200,23 +227,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const budgetInput = document.getElementById("budget-input");
 
     document.getElementById("edit-budget-button")?.addEventListener("click", function () {
-        if (budgetInput) budgetInput.value = localStorage.getItem(BUDGET_KEY) || "";
+        if (budgetInput) budgetInput.value = monthlyBudget || "";
         budgetModal?.showModal();
     });
 
     document.getElementById("close-budget-modal")?.addEventListener("click", () => budgetModal?.close());
     document.getElementById("cancel-budget")?.addEventListener("click", () => budgetModal?.close());
 
-    budgetForm?.addEventListener("submit", function (event) {
+    budgetForm?.addEventListener("submit", async function (event) {
         event.preventDefault();
         const budget = Number(budgetInput.value);
         if (!budget || budget <= 0) {
             alert("Please enter a valid budget amount.");
             return;
         }
-        localStorage.setItem(BUDGET_KEY, budget);
-        budgetModal.close();
-        displayBudget();
+        try {
+            const data = await apiRequest("/budget", "PUT", { amount: budget });
+            monthlyBudget = Number(data.budget.amount) || 0;
+            budgetModal.close();
+            displayBudget();
+        } catch (error) {
+            alert(error.message || "Unable to save budget.");
+        }
     });
 
     const goalModal = document.getElementById("goal-modal");
@@ -247,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("close-goal-modal")?.addEventListener("click", () => goalModal?.close());
     document.getElementById("cancel-goal")?.addEventListener("click", () => goalModal?.close());
 
-    goalForm?.addEventListener("submit", function (event) {
+    goalForm?.addEventListener("submit", async function (event) {
         event.preventDefault();
         const name = goalNameInput.value.trim();
         const target = Number(goalTargetInput.value);
@@ -262,19 +294,25 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        let goals = getGoals();
-        if (goalIdInput.value) {
-            goals = goals.map(g => String(g.id) === String(goalIdInput.value) ? { id: g.id, name, target, saved } : g);
-        } else {
-            goals.push({ id: Date.now(), name, target, saved });
-        }
+        try {
+            if (goalIdInput.value) {
+                const data = await apiRequest("/goals/" + goalIdInput.value, "PUT", { name, target, saved });
+                goals = goals.map(g => String(g.id) === String(goalIdInput.value)
+                    ? { ...data.goal, id: data.goal._id }
+                    : g);
+            } else {
+                const data = await apiRequest("/goals", "POST", { name, target, saved });
+                goals.push({ ...data.goal, id: data.goal._id });
+            }
 
-        saveGoals(goals);
-        goalModal.close();
-        displayGoals();
+            goalModal.close();
+            displayGoals();
+        } catch (error) {
+            alert(error.message || "Unable to save goal.");
+        }
     });
 
-    goalsList?.addEventListener("click", function (event) {
+    goalsList?.addEventListener("click", async function (event) {
         const editButton = event.target.closest(".edit-goal");
         const deleteButton = event.target.closest(".delete-goal");
 
@@ -285,9 +323,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (deleteButton) {
             if (confirm("Are you sure you want to delete this goal?")) {
-                const goals = getGoals().filter(goal => String(goal.id) !== String(deleteButton.dataset.id));
-                saveGoals(goals);
-                displayGoals();
+                try {
+                    await apiRequest("/goals/" + deleteButton.dataset.id, "DELETE");
+                    goals = goals.filter(goal => String(goal.id) !== String(deleteButton.dataset.id));
+                    displayGoals();
+                } catch (error) {
+                    alert(error.message || "Unable to delete goal.");
+                }
             }
         }
     });
@@ -313,11 +355,30 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("logout-link")?.addEventListener("click", function () {
         if (confirm("Are you sure you want to logout?")) {
             localStorage.removeItem("cashbookUser");
+            localStorage.removeItem("cashbookToken");
             window.location.href = "index.html";
         }
     });
 
-    // Initial render
-    displayBudget();
-    displayGoals();
+    // Initial load from MongoDB, then render
+    async function loadBudgetPage() {
+        try {
+            const [txData, budgetData, goalData] = await Promise.all([
+                apiRequest("/transactions"),
+                apiRequest("/budget"),
+                apiRequest("/goals")
+            ]);
+
+            transactions = txData.transactions || [];
+            monthlyBudget = Number(budgetData.budget && budgetData.budget.amount) || 0;
+            goals = (goalData.goals || []).map(g => ({ ...g, id: g._id }));
+        } catch (error) {
+            console.error("Error loading budget page:", error);
+        }
+
+        displayBudget();
+        displayGoals();
+    }
+
+    loadBudgetPage();
 });

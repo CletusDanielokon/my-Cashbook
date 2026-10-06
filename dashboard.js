@@ -85,102 +85,240 @@ document.addEventListener("DOMContentLoaded", function () {
     // =========================================
     // 7. CALCULATE FINANCES
     // =========================================
-    function calculateFinances() {
-        const transactions = JSON.parse(localStorage.getItem("cashbookTransactions")) || [];
+    async function calculateFinances() {
 
-        let totalIncome = 0;
-        let totalExpenses = 0;
+        try {
 
-        transactions.forEach(function (transaction) {
-            const amount = Number(transaction.amount) || 0;
+            const token =
+                localStorage.getItem("cashbookToken");
 
-            if (transaction.type === "income") {
-                totalIncome += amount;
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/transactions",
+                    {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${token}`
+                        }
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!response.ok) {
+
+                console.error(
+                    data.message ||
+                    "Unable to load transactions."
+                );
+
+                return;
             }
 
-            if (transaction.type === "expense") {
-                totalExpenses += amount;
+            const transactions =
+                data.transactions || [];
+
+            let totalIncome = 0;
+
+            let totalExpenses = 0;
+
+            transactions.forEach(function (transaction) {
+
+                const amount =
+                    Number(transaction.amount) || 0;
+
+                if (transaction.type === "income") {
+
+                    totalIncome += amount;
+
+                }
+
+                if (transaction.type === "expense") {
+
+                    totalExpenses += amount;
+
+                }
+
+            });
+
+            const balance =
+                totalIncome - totalExpenses;
+
+            if (incomeElement) {
+
+                incomeElement.textContent =
+                    formatNaira(totalIncome);
+
             }
-        });
 
-        const balance = totalIncome - totalExpenses;
+            if (expensesElement) {
 
-        if (incomeElement) {
-            incomeElement.textContent = formatNaira(totalIncome);
-        }
+                expensesElement.textContent =
+                    formatNaira(totalExpenses);
 
-        if (expensesElement) {
-            expensesElement.textContent = formatNaira(totalExpenses);
-        }
+            }
 
-        if (balanceElement) {
-            balanceElement.textContent = formatNaira(balance);
+            if (balanceElement) {
+
+                balanceElement.textContent =
+                    formatNaira(balance);
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Error loading financial summary:",
+                error
+            );
+
         }
     }
-
+    
     // =========================================
     // 8. DISPLAY RECENT TRANSACTIONS
-    // ========================================
-    function displayRecentTransactions() {
+    // =========================================
+    async function displayRecentTransactions() {
+
         if (!recentTransactionsElement) {
             return;
         }
 
-        const savedTransactions =
-            JSON.parse(localStorage.getItem("cashbookTransactions")) || [];
+        try {
 
-        const recentTransactions = savedTransactions.slice(-6).reverse();
+            const token =
+                localStorage.getItem("cashbookToken");
 
-        if (recentTransactions.length === 0) {
-            recentTransactionsElement.innerHTML = `
-                <p class="p-5 text-sm text-slate-500 dark:text-slate-400">
-                    No transactions yet.
-                </p>
-            `;
-            return;
-        }
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/transactions",
+                    {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${token}`
+                        }
+                    }
+                );
 
-        recentTransactionsElement.innerHTML =
-            recentTransactions.map(function (transaction) {
-                const isIncome = transaction.type === "income";
-                const sign = isIncome ? "+" : "-";
-                const amountClass = isIncome ? "text-green" : "text-red-500";
-                
-                // Use Font Awesome icons instead of emojis
-                const iconClass = isIncome 
-                    ? "fas fa-arrow-trend-up text-green" 
-                    : "fas fa-arrow-trend-down text-red-500";
+            const data =
+                await response.json();
 
-                const description = transaction.description || "Unnamed transaction";
-                const category = transaction.category || "Other";
-                const date = transaction.date || "";
-                const time = transaction.time || "";
+            if (!response.ok) {
 
-                return `
-                    <div class="p-5 flex items-center justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full ${
-                                isIncome ? "bg-green/10" : "bg-red-50 dark:bg-red-500/10"
-                            } flex items-center justify-center">
-                                <i class="${iconClass}"></i>
-                            </div>
-                            <div>
-                                <p class="font-medium text-navy dark:text-white">
-                                    ${escapeHTML(description)}
-                                </p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">
-                                    ${escapeHTML(category)}
-                                    • ${escapeHTML(date)}
-                                    ${time ? " • " + escapeHTML(time) : ""}
-                                </p>
-                            </div>
-                        </div>
-                        <p class="font-semibold ${amountClass}">
-                            ${sign}${formatNaira(transaction.amount)}
-                        </p>
-                    </div>
+                console.error(
+                    data.message ||
+                    "Unable to load transactions."
+                );
+
+                return;
+            }
+
+            const transactions =
+                data.transactions || [];
+
+            const recentTransactions =
+                transactions.slice(0, 6);
+
+            if (recentTransactions.length === 0) {
+
+                recentTransactionsElement.innerHTML = `
+                    <p class="p-5 text-sm text-slate-500 dark:text-slate-400">
+                        No transactions yet.
+                    </p>
                 `;
-            }).join("");
+
+                return;
+            }
+
+            recentTransactionsElement.innerHTML =
+                recentTransactions.map(function (transaction) {
+
+                    const isIncome =
+                        transaction.type === "income";
+
+                    const sign =
+                        isIncome ? "+" : "-";
+
+                    const amountClass =
+                        isIncome
+                        ? "text-green"
+                        : "text-red-500";
+
+                    const iconClass =
+                        isIncome
+                        ? "fas fa-arrow-trend-up text-green"
+                        : "fas fa-arrow-trend-down text-red-500";
+
+                    const description =
+                        transaction.description ||
+                        "Unnamed transaction";
+
+                    const category =
+                        transaction.category ||
+                        "Other";
+
+                    const date =
+                        transaction.date ||
+                        "";
+
+                    const time =
+                        transaction.time ||
+                        "";
+
+                    return `
+                        <div class="p-5 flex items-center justify-between gap-3">
+
+                            <div class="flex items-center gap-3">
+
+                                <div class="w-10 h-10 rounded-full ${
+                                    isIncome
+                                    ? "bg-green/10"
+                                    : "bg-red-50 dark:bg-red-500/10"
+                                } flex items-center justify-center">
+
+                                    <i class="${iconClass}"></i>
+
+                                </div>
+
+                                <div>
+
+                                    <p class="font-medium text-navy dark:text-white">
+                                        ${escapeHTML(description)}
+                                    </p>
+
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                                        ${escapeHTML(category)}
+                                        •
+                                        ${escapeHTML(date)}
+                                        ${
+                                            time
+                                            ? " • " + escapeHTML(time)
+                                            : ""
+                                        }
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                            <p class="font-semibold ${amountClass}">
+                                ${sign}${formatNaira(transaction.amount)}
+                            </p>
+
+                        </div>
+                    `;
+
+                }).join("");
+
+        } catch (error) {
+
+            console.error(
+                "Error loading recent transactions:",
+                error
+            );
+
+        }
     }
 
     // =========================================
@@ -227,6 +365,7 @@ document.addEventListener("DOMContentLoaded", function () {
         logoutBtn.addEventListener("click", function () {
             if (confirm("Are you sure you want to logout?")) {
                 localStorage.removeItem("cashbookUser");
+                localStorage.removeItem("cashbookToken");
                 window.location.href = "index.html";
             }
         });
@@ -308,7 +447,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     if (transactionForm) {
-        transactionForm.addEventListener("submit", function (event) {
+        transactionForm.addEventListener("submit", async function (event) {
             event.preventDefault();
 
             const descriptionInput = document.getElementById("description");
@@ -342,32 +481,63 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            const newTransaction = {
-                id: Date.now(),
-                type: type,
-                description: description,
-                amount: amount,
-                category: category,
-                date: date,
-                time: time
-            };
+            const token =
+                localStorage.getItem("cashbookToken");
 
-            const currentTransactions =
-                JSON.parse(localStorage.getItem("cashbookTransactions")) || [];
+            if (!token) {
+                alert("Your login session has expired. Please log in again.");
+                window.location.href = "index.html";
+                return;
+            }
 
-            currentTransactions.push(newTransaction);
+            try {
+                const response = await fetch(
+                    "http://localhost:5000/api/transactions",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            description: description,
+                            amount: amount,
+                            date: date,
+                            time: time,
+                            category: category,
+                            type: type
+                        })
+                    }
+                );
 
-            localStorage.setItem(
-                "cashbookTransactions",
-                JSON.stringify(currentTransactions)
-            );
+                const data = await response.json();
 
-            calculateFinances();
-            displayRecentTransactions();
-            transactionForm.reset();
-            closeModal();
+                if (!response.ok) {
+                    alert(
+                        data.message ||
+                        "Unable to save transaction."
+                    );
+                    return;
+                }
 
-            alert("Transaction saved successfully!");
+                transactionForm.reset();
+                closeModal();
+
+                await calculateFinances();
+                await displayRecentTransactions();
+
+                alert("Transaction saved successfully!");
+
+            } catch (error) {
+                console.error(
+                    "Dashboard transaction error:",
+                    error
+                );
+
+                alert(
+                    "Unable to connect to the CashBook server."
+                );
+            }
         });
     }
 

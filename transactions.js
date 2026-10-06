@@ -111,31 +111,64 @@ document.addEventListener("DOMContentLoaded", function () {
     // =========================================
     // 4. GET SAVED TRANSACTIONS
     // =========================================
-
     let transactions = [];
 
-    try {
-
-        transactions =
-            JSON.parse(localStorage.getItem("cashbookTransactions")) || [];
-
-    } catch (error) {
-
-        transactions = [];
-
-    }
-
-    // The id of the transaction being edited (null = adding a new one)
+    // The ID of the transaction being edited
     let editingTransactionId = null;
 
+    // Get login token
+    const token = localStorage.getItem("cashbookToken");
 
-    function saveTransactions() {
+    if (!token) {
+        window.location.href = "index.html";
+        return;
+    }
 
-        localStorage.setItem(
-            "cashbookTransactions",
-            JSON.stringify(transactions)
-        );
+    // =========================================
+    // LOAD TRANSACTIONS FROM MONGODB
+    // =========================================
+    async function loadTransactions() {
+        try {
+            const response = await fetch(
+                "http://localhost:5000/api/transactions",
+                {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                }
+            );
 
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.error(data.message || "Unable to load transactions.");
+
+                if (response.status === 401) {
+                    localStorage.removeItem("cashbookToken");
+                    localStorage.removeItem("cashbookUser");
+                    window.location.href = "index.html";
+                }
+
+                return;
+            }
+
+            // Store MongoDB transactions in the existing array
+            transactions = data.transactions.map(function (transaction) {
+
+                return {
+                    ...transaction,
+                    id: transaction._id
+                };
+
+            });
+
+            // Display them using the existing function
+            displayTransactions();
+
+        } catch (error) {
+            console.error("Error loading transactions:", error);
+        }
     }
 
 
@@ -670,7 +703,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const id =
-            Number(button.dataset.id);
+            button.dataset.id;
 
         if (button.dataset.action === "edit") {
 
@@ -686,12 +719,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     });
 
-
     // =========================================
     // 10. DELETE TRANSACTION
     // =========================================
 
-    function deleteTransaction(id) {
+    async function deleteTransaction(id) {
 
         const confirmDelete =
             confirm("Are you sure you want to delete this transaction?");
@@ -704,18 +736,63 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
 
-        transactions =
-            transactions.filter(function (transaction) {
+        try {
 
-                return Number(transaction.id) !== id;
+            const response = await fetch(
+                `http://localhost:5000/api/transactions/${id}`,
+                {
+                    method: "DELETE",
 
-            });
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                }
+            );
 
 
-        saveTransactions();
+            const data = await response.json();
 
 
-        displayTransactions();
+            if (!response.ok) {
+
+                alert(
+                    data.message ||
+                    "Unable to delete transaction."
+                );
+
+                return;
+
+            }
+
+
+            // Remove the transaction from the page
+            transactions =
+                transactions.filter(function (transaction) {
+
+                    return String(transaction.id) !== String(id);
+
+                });
+
+
+            displayTransactions();
+
+
+            alert("Transaction deleted successfully!");
+
+
+        } catch (error) {
+
+            console.error(
+                "Delete transaction error:",
+                error
+            );
+
+
+            alert(
+                "Unable to connect to the CashBook server."
+            );
+
+        }
 
     }
 
@@ -786,7 +863,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const transaction =
             transactions.find(function (item) {
 
-                return Number(item.id) === id;
+                return String(item.id) === String(id);
 
             });
 
@@ -894,45 +971,36 @@ document.addEventListener("DOMContentLoaded", function () {
     // 12. SAVE TRANSACTION (ADD OR EDIT)
     // =========================================
 
-    transactionForm.addEventListener("submit", function (event) {
+    transactionForm.addEventListener("submit", async function (event) {
 
         event.preventDefault();
-
 
         const description =
             document.getElementById("description").value.trim();
 
-
         const amount =
             Number(document.getElementById("amount").value);
-
 
         const date =
             transactionDateInput.value;
 
-
         const time =
             transactionTimeInput ? transactionTimeInput.value : "";
 
-
         const category =
             document.getElementById("category").value;
-
 
         const type =
             transactionTypeInput.value;
 
 
+        // Check required fields
         if (
-
             description === "" ||
-
             !(amount > 0) ||
-
             date === "" ||
-
-            category === ""
-
+            category === "" ||
+            type === ""
         ) {
 
             alert("Please fill in all fields correctly.");
@@ -942,67 +1010,135 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
 
-        if (editingTransactionId !== null) {
+        // =========================================
+        // ADD NEW TRANSACTION
+        // =========================================
 
-            // Update the existing transaction
+        if (editingTransactionId === null) {
+            try {
+                const response = await fetch(
+                    "http://localhost:5000/api/transactions",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            description: description,
+                            amount: amount,
+                            date: date,
+                            time: time,
+                            category: category,
+                            type: type
+                        })
+                    }
+                );
 
-            const index =
-                transactions.findIndex(function (item) {
+                const data = await response.json();
 
-                    return item.id === editingTransactionId;
+                if (!response.ok) {
+                    alert(
+                        data.message ||
+                        "Unable to save transaction."
+                    );
+                    return;
+                }
 
-                });
+                const savedTransaction = {
+                    ...data.transaction,
+                    id: data.transaction._id
+                };
 
+                transactions.push(savedTransaction);
 
-            if (index !== -1) {
+                displayTransactions();
 
-                transactions[index].description = description;
+                transactionForm.reset();
 
-                transactions[index].amount = amount;
+                closeModal();
 
-                transactions[index].date = date;
+                alert("Transaction saved successfully!");
 
-                transactions[index].time = time;
+            } catch (error) {
+                console.error(
+                    "Save transaction error:",
+                    error
+                );
 
-                transactions[index].category = category;
-
+                alert(
+                    "Unable to connect to the CashBook server."
+                );
             }
 
-        } else {
-
-            // Add a new transaction
-
-            transactions.push({
-
-                id: Date.now(),
-
-                description: description,
-
-                amount: amount,
-
-                date: date,
-
-                time: time,
-
-                category: category,
-
-                type: type
-
-            });
-
+            return;
         }
 
+        // UPDATE EXISTING TRANSACTION
+        try {
+            const response = await fetch(
+                `http://localhost:5000/api/transactions/${editingTransactionId}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        description: description,
+                        amount: amount,
+                        date: date,
+                        time: time,
+                        category: category,
+                        type: type
+                    })
+                }
+            );
 
-        saveTransactions();
+            const data = await response.json();
 
+            if (!response.ok) {
+                alert(
+                    data.message ||
+                    "Unable to update transaction."
+                );
+                return;
+            }
 
-        transactionForm.reset();
+            const updatedTransaction = {
+                ...data.transaction,
+                id: data.transaction._id
+            };
 
+            transactions = transactions.map(function (transaction) {
+                if (
+                    String(transaction.id) ===
+                    String(editingTransactionId)
+                ) {
+                    return updatedTransaction;
+                }
 
-        closeModal();
+                return transaction;
+            });
 
+            displayTransactions();
 
-        displayTransactions();
+            transactionForm.reset();
+
+            closeModal();
+
+            alert("Transaction updated successfully!");
+
+        } catch (error) {
+            console.error(
+                "Update transaction error:",
+                error
+            );
+
+            alert(
+                "Unable to connect to the CashBook server."
+            );
+        }
 
     });
 
@@ -1150,6 +1286,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (confirmLogout) {
 
                 localStorage.removeItem("cashbookUser");
+                localStorage.removeItem("cashbookToken");
 
                 window.location.href = "index.html";
 
@@ -1162,6 +1299,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // 17. INITIAL DISPLAY
     // =========================================
 
-    displayTransactions();
+    loadTransactions();
 
 });
